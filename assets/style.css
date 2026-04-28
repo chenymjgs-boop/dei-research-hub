@@ -564,6 +564,203 @@ a:hover { color: var(--brand-900); }
     margin-bottom: 8px;
 }
 
+/* ============================================================================
+   v2 — pillar badges, competitor mark, three-client relevance, implications
+   ============================================================================ */
+
+/* Pillar colors */
+:root {
+    --pillar-global:        #1d4ed8;   /* blue */
+    --pillar-global-bg:     #eff6ff;
+    --pillar-mnc:           #be185d;   /* pink */
+    --pillar-mnc-bg:        #fdf2f8;
+    --pillar-going:         #047857;   /* emerald */
+    --pillar-going-bg:      #ecfdf5;
+
+    --comp:                 #b45309;   /* amber */
+    --comp-bg:              #fffbeb;
+
+    --rel-strong-bg:        #f0fdf4;
+    --rel-strong-fg:        #15803d;
+    --rel-mid-bg:           #fef9c3;
+    --rel-mid-fg:           #a16207;
+    --rel-weak-bg:          var(--paper-alt);
+    --rel-weak-fg:          var(--ink-muted);
+}
+
+.v2-item {
+    padding: 36px 0;
+}
+
+.item-title-block {
+    flex: 1 1 auto;
+}
+.item-title-en {
+    margin: 4px 0 0;
+    font-family: var(--font-en);
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--ink-muted);
+    line-height: 1.4;
+}
+
+.item-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 14px 0 16px;
+    color: var(--ink-muted);
+    font-size: 13.5px;
+}
+.item-meta-row .meta-source { color: var(--ink-soft); font-weight: 500; }
+.item-meta-row .meta-dot { color: var(--ink-subtle); }
+.item-meta-row .num { font-family: var(--font-en); }
+
+/* Pillar + competitor badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+}
+.badge.pillar.pillar-global              { background: var(--pillar-global-bg); color: var(--pillar-global); }
+.badge.pillar.pillar-mnc_china           { background: var(--pillar-mnc-bg);    color: var(--pillar-mnc); }
+.badge.pillar.pillar-china_going_global  { background: var(--pillar-going-bg);  color: var(--pillar-going); }
+.badge.competitor                        { background: var(--comp-bg); color: var(--comp); border: 1px solid var(--comp); }
+
+/* Stance badges (v2.1) */
+.badge.stance.stance-backlash    { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+.badge.stance.stance-persist     { background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; }
+.badge.stance.stance-controversy { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.badge.stance.stance-mainstream  { background: var(--paper-alt); color: var(--ink-muted); }
+
+/* Three-client relevance bar */
+.client-rel-bar {
+    display: flex;
+    gap: 6px;
+    margin: 0 0 18px;
+    flex-wrap: wrap;
+}
+.rel-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12.5px;
+    line-height: 1;
+    font-family: var(--font-sans);
+}
+.rel-cell strong {
+    font-family: var(--font-en);
+    font-weight: 700;
+}
+.rel-cell.strong { background: var(--rel-strong-bg); color: var(--rel-strong-fg); }
+.rel-cell.mid    { background: var(--rel-mid-bg);    color: var(--rel-mid-fg); }
+.rel-cell.weak   { background: var(--rel-weak-bg);   color: var(--rel-weak-fg); }
+
+.overall-rel {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+}
+.overall-rel .num { font-family: var(--font-en); font-weight: 700; color: var(--ink); font-size: 14px; }
+
+/* Three implications — each in its own colored block */
+.implication {
+    margin-top: 14px;
+    padding: 16px 20px;
+    border-radius: 6px;
+    border-left: 3px solid var(--brand-500);
+    background: linear-gradient(135deg, var(--brand-50) 0%, #fff 100%);
+    font-size: 14.5px;
+    line-height: 1.75;
+}
+.implication.imp-mnc    { border-left-color: var(--pillar-mnc);    background: linear-gradient(135deg, var(--pillar-mnc-bg) 0%, #fff 100%); }
+.implication.imp-esg    { border-left-color: var(--pillar-global); background: linear-gradient(135deg, var(--pillar-global-bg) 0%, #fff 100%); }
+.implication.imp-going  { border-left-color: var(--pillar-going);  background: linear-gradient(135deg, var(--pillar-going-bg) 0%, #fff 100%); }
+
+.imp-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.implication.imp-mnc   .imp-label { color: var(--pillar-mnc); }
+.implication.imp-esg   .imp-label { color: var(--pillar-global); }
+.implication.imp-going .imp-label { color: var(--pillar-going); }
+.imp-score {
+    font-family: var(--font-en);
+    font-size: 11px;
+    color: var(--ink-muted);
+    text-transform: none;
+    letter-spacing: 0.02em;
+}
+.imp-text {
+    margin: 0;
+    color: var(--ink-soft);
+    line-height: 1.75;
+}
+
+/* Competitor intelligence — distinctive amber treatment */
+.competitor-intel {
+    margin-top: 16px;
+    padding: 18px 22px;
+    border-radius: 6px;
+    border: 1px dashed var(--comp);
+    background: var(--comp-bg);
+    font-size: 14.5px;
+    line-height: 1.75;
+}
+.ci-head {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--comp);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.ci-text { margin: 0; color: var(--ink); line-height: 1.75; }
+
+.tag-industry {
+    background: var(--paper);
+    border-color: var(--rule-strong);
+    font-style: italic;
+}
+
+/* Index-page pillar mini-stats inside week-card */
+.pillar-stats {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 12px;
+}
+.pstat {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-family: var(--font-en);
+    font-weight: 500;
+}
+.pstat.global { background: var(--pillar-global-bg); color: var(--pillar-global); }
+.pstat.mnc    { background: var(--pillar-mnc-bg);    color: var(--pillar-mnc); }
+.pstat.going  { background: var(--pillar-going-bg);  color: var(--pillar-going); }
+.pstat.comp   { background: var(--comp-bg); color: var(--comp); }
+
+
 /* ---------- Responsive ---------- */
 @media (max-width: 720px) {
     .container, .container-narrow { padding: 0 20px; }
@@ -574,4 +771,6 @@ a:hover { color: var(--brand-900); }
     .narrative h2 { font-size: 24px; margin-top: 40px; }
     .week-card { padding: 28px 24px; }
     .item-header { flex-direction: column; gap: 8px; }
+    .client-rel-bar { gap: 4px; }
+    .rel-cell { font-size: 11.5px; padding: 4px 8px; }
 }
