@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="DEI Research Assistant">
+    <meta name="description" content="全球 DEI 研究持续追踪 · 面向中国企业的本地化洞察">
+    <title>{% block title %}DEI 研究 Hub{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@500;700;900&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ assets }}style.css">
+</head>
+<body>
+    {% block body %}{% endblock %}
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="row">
+                <div>
+                    <span class="brand-mini">DEI 研究 Hub</span>
+                    <span style="margin-left: 12px;">由 DEI 研究助手自动汇总</span>
+                </div>
+                <div class="font-en">最后更新 · {{ generated_at }}</div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

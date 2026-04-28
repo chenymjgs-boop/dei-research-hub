@@ -1,0 +1,73 @@
+{% extends "_layout.html" %}
+{% block title %}DEI 研究 Hub · 全球 DEI 研究持续追踪{% endblock %}
+{% block body %}
+<div class="hero">
+    <header class="site-header on-hero">
+        <div class="container">
+            <div class="row">
+                <a class="brand" href="index.html">DEI 研究 Hub</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="hero-inner">
+        <div class="container">
+            <p class="eyebrow">DEI Research · Global Insight, China Lens</p>
+            <h1>全球 DEI 研究<br>每周更新 · 中国视角</h1>
+            <p class="lead">
+                汇集来自 HBR、MIT Sloan、SSIR、McKinsey、UN、ILO、HR Dive
+                等 20+ 全球来源的 DEI 研究、报告与判例，由 Claude
+                进行双语摘要、本地化洞察与趋势综合，为中国企业 DEI 实践提供前沿参考。
+            </p>
+            <div class="stats">
+                <div class="stat">
+                    <span class="stat-value">{{ total_weeks }}</span>
+                    <span class="stat-label">Weekly Briefs</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">{{ total_items }}</span>
+                    <span class="stat-label">Research Items</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">{{ total_sources }}</span>
+                    <span class="stat-label">Sources</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="section">
+    <div class="container">
+        <div class="section-head">
+            <p class="section-eyebrow">Archive · 周报存档</p>
+            <h2 class="section-title">所有周报</h2>
+        </div>
+
+        {% if weeks %}
+        <ul class="week-list">
+        {% for w in weeks %}
+            <li>
+                <a class="week-card" href="weeks/{{ w.week_key }}.html">
+                    <div class="week-meta">{{ w.start_date }} → {{ w.end_date }} · {{ w.week_key }}</div>
+                    <h3>{{ w.title }}</h3>
+                    {% if w.preview %}<p class="week-summary">{{ w.preview }}</p>{% endif %}
+                    <div class="week-counts">
+                        <span><strong>{{ w.item_count }}</strong> 条研究</span>
+                        {% if w.top_topics %}
+                        <span>热点：{{ w.top_topics | join(' · ') }}</span>
+                        {% endif %}
+                    </div>
+                </a>
+            </li>
+        {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state">
+            <h3>暂无周报</h3>
+            <p>每周一上午自动生成。手动触发：<code>python main.py weekly</code></p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

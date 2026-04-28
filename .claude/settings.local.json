@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l src/*.py src/*/*.py)",
+      "Bash(source .venv/bin/activate)",
+      "Bash(python -c \"import sys; print\\(sys.version\\)\")",
+      "Bash(python main.py preview)",
+      "Bash(python -c \":*)",
+      "Bash(python:*)",
+      "Bash(claude --version)",
+      "Bash(pip install claude-agent-sdk)",
+      "Bash(pip install json-repair)",
+      "Bash(chmod +x /Users/marciachen/dei-research-assistant/scripts/run-daily.sh)",
+      "Bash(launchctl unload ~/Library/LaunchAgents/com.marciachen.dei-research.daily.plist)",
+      "Bash(launchctl load -w ~/Library/LaunchAgents/com.marciachen.dei-research.daily.plist)",
+      "Bash(launchctl list)",
+      "Bash(pip install jinja2 markdown)",
+      "Bash(pmset -g sched)",
+      "Bash(open /Users/marciachen/dei-research-assistant/reports/site/index.html)",
+      "Bash(chmod +x /Users/marciachen/dei-research-assistant/scripts/run-weekly.sh)",
+      "Bash(launchctl unload ~/Library/LaunchAgents/com.marciachen.dei-research.weekly.plist)",
+      "Bash(launchctl load -w ~/Library/LaunchAgents/com.marciachen.dei-research.weekly.plist)",
+      "WebFetch(domain:deibrief-y2mwx5ch.manus.space)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(curl -sL https://deibrief-y2mwx5ch.manus.space/)",
+      "Bash(curl -sL https://deibrief-y2mwx5ch.manus.space/assets/index-B7DXxzau.css)",
+      "Bash(chmod +x /Users/marciachen/dei-research-assistant/scripts/publish.sh)",
+      "Bash(gh --version)",
+      "Bash(brew install gh)",
+      "Bash(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest)",
+      "Bash(~/.local/bin/gh auth status)",
+      "Bash(git init -b main)",
+      "Bash(git add .)",
+      "Bash(git -c user.name=\"Marcia Chen\" -c user.email=\"chenymjgs-boop@users.noreply.github.com\" commit -m \"initial: DEI research assistant with Feishu + cumulative web hub\")"
+    ]
+  }
+}

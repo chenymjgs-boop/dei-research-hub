@@ -1,0 +1,46 @@
+name: DEI Weekly Trend Report
+
+on:
+  schedule:
+    # Every Sunday at 22:00 UTC = Monday 06:00 Beijing time
+    - cron: "0 22 * * 0"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run weekly trend report
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_BITABLE_APP_TOKEN: ${{ secrets.FEISHU_BITABLE_APP_TOKEN }}
+          FEISHU_BITABLE_TABLE_ID: ${{ secrets.FEISHU_BITABLE_TABLE_ID }}
+          FEISHU_CHAT_ID: ${{ secrets.FEISHU_CHAT_ID }}
+          FEISHU_DOC_FOLDER_TOKEN: ${{ secrets.FEISHU_DOC_FOLDER_TOKEN }}
+        run: python main.py weekly
+
+      - name: Commit weekly report
+        run: |
+          git config user.name "dei-research-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add reports/ || true
+          git diff --cached --quiet || git commit -m "chore(reports): weekly run $(date -u +%Y-%m-%d)"
+          git push || true

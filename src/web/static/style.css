@@ -1,0 +1,577 @@
+/* DEI 研究 Hub — Editorial Luxury
+ * 深橙渐变 Hero · 五色话题系统 · Noto Serif SC + Noto Sans SC + Inter
+ */
+
+:root {
+    /* Neutrals — warm off-white editorial paper */
+    --paper:        #fbf8f3;
+    --paper-alt:    #f4eee4;
+    --ink:          #1c1917;
+    --ink-soft:     #44403c;
+    --ink-muted:    #78716c;
+    --ink-subtle:   #a8a29e;
+    --rule:         #e7e2d8;
+    --rule-strong:  #d6cebc;
+
+    /* Brand — deep editorial purple */
+    --brand-50:  #f5f3ff;
+    --brand-100: #ede9fe;
+    --brand-300: #c4b5fd;
+    --brand-500: #8b5cf6;
+    --brand-600: #7c3aed;
+    --brand-700: #6d28d9;
+    --brand-800: #5b21b6;
+    --brand-900: #4c1d95;
+
+    /* Five topic colors (chosen to remain distinct against the purple brand) */
+    --c-academic:      #047857;   /* emerald — scholarly */
+    --c-academic-bg:   #ecfdf5;
+    --c-consulting:    #0e7490;   /* cyan — consulting */
+    --c-consulting-bg: #ecfeff;
+    --c-international: #1d4ed8;   /* blue — institutional */
+    --c-international-bg: #eff6ff;
+    --c-media:         #be185d;   /* pink — vibrant */
+    --c-media-bg:      #fdf2f8;
+    --c-china:         #b91c1c;   /* red — distinctive */
+    --c-china-bg:      #fef2f2;
+
+    /* Typography */
+    --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", Georgia, serif;
+    --font-sans:  "Noto Sans SC", -apple-system, BlinkMacSystemFont, "PingFang SC",
+                  "Helvetica Neue", Arial, sans-serif;
+    --font-en:    "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    --font-mono:  "JetBrains Mono", "SF Mono", Menlo, monospace;
+
+    --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.04);
+    --shadow-md: 0 8px 24px rgba(28, 25, 23, 0.06);
+    --shadow-lg: 0 24px 48px rgba(28, 25, 23, 0.10);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    color: var(--ink);
+    background: var(--paper);
+    font-family: var(--font-sans);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "kern", "liga", "ss01";
+}
+
+/* English / Latin chars get Inter automatically */
+.font-en, .num, time, .stat-value, .badge {
+    font-family: var(--font-en);
+    font-feature-settings: "tnum";
+}
+
+a {
+    color: var(--brand-700);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+a:hover { color: var(--brand-900); }
+
+.container {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 32px;
+}
+.container-narrow {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 32px;
+}
+
+/* ---------- Site header (sits over hero on index, plain on inner pages) ---------- */
+.site-header {
+    padding: 28px 0;
+    background: transparent;
+    position: relative;
+    z-index: 5;
+}
+.site-header.on-paper {
+    background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+}
+.site-header .row {
+    display: flex;
+    align-items: baseline;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+.site-header .brand {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+}
+.site-header.on-hero .brand,
+.site-header.on-hero .tagline { color: rgba(255, 255, 255, 0.96); }
+.site-header .brand:hover { color: var(--brand-700); }
+.site-header.on-hero .brand:hover { color: var(--brand-100); }
+.site-header .tagline {
+    font-size: 13px;
+    color: var(--ink-muted);
+    letter-spacing: 0.02em;
+}
+.site-header .nav-back {
+    margin-left: auto;
+    font-size: 14px;
+    color: var(--ink-muted);
+}
+
+/* ---------- Hero (index) ---------- */
+.hero {
+    position: relative;
+    background:
+        radial-gradient(ellipse at top right, rgba(196, 181, 253, 0.40) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom left, rgba(46, 16, 101, 0.65) 0%, transparent 60%),
+        linear-gradient(135deg, #7c3aed 0%, #6d28d9 35%, #4c1d95 75%, #2e1065 100%);
+    color: #fff;
+    overflow: hidden;
+    margin-top: -100px;  /* pull hero up under header */
+    padding-top: 100px;  /* compensate */
+}
+.hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(circle at 20% 30%, rgba(237, 233, 254, 0.15) 0%, transparent 8%),
+        radial-gradient(circle at 75% 70%, rgba(245, 243, 255, 0.12) 0%, transparent 6%),
+        radial-gradient(circle at 50% 90%, rgba(196, 181, 253, 0.18) 0%, transparent 10%);
+    pointer-events: none;
+}
+.hero-inner {
+    position: relative;
+    z-index: 2;
+    padding: 64px 0 96px;
+}
+.hero .eyebrow {
+    font-family: var(--font-en);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(237, 233, 254, 0.88);
+    margin-bottom: 24px;
+}
+.hero h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(36px, 5.5vw, 60px);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin: 0 0 24px;
+    max-width: 14ch;
+}
+.hero .lead {
+    font-size: clamp(16px, 1.6vw, 19px);
+    line-height: 1.7;
+    color: rgba(245, 243, 255, 0.92);
+    max-width: 60ch;
+    margin: 0;
+}
+.hero .stats {
+    display: flex;
+    gap: 56px;
+    margin-top: 48px;
+    flex-wrap: wrap;
+}
+.hero .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.hero .stat-value {
+    font-family: var(--font-serif);
+    font-size: 44px;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    letter-spacing: -0.02em;
+}
+.hero .stat-label {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(237, 233, 254, 0.82);
+}
+
+/* ---------- Section headings ---------- */
+.section {
+    padding: 80px 0 24px;
+}
+.section-head {
+    margin-bottom: 40px;
+}
+.section-eyebrow {
+    font-family: var(--font-en);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--brand-700);
+    margin-bottom: 12px;
+}
+.section-title {
+    font-family: var(--font-serif);
+    font-size: 36px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--ink);
+}
+
+/* ---------- Week list (index) ---------- */
+.week-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+}
+@media (min-width: 720px) {
+    .week-list { grid-template-columns: 1fr 1fr; }
+}
+
+.week-card {
+    display: flex;
+    flex-direction: column;
+    padding: 36px 32px;
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+.week-card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--brand-500), var(--brand-700));
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 0.25s ease;
+}
+.week-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--rule-strong);
+    text-decoration: none;
+}
+.week-card:hover::before { transform: scaleY(1); }
+
+.week-card .week-meta {
+    font-family: var(--font-en);
+    color: var(--ink-muted);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+.week-card h3 {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.35;
+    margin: 0 0 16px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+}
+.week-card .week-summary {
+    color: var(--ink-soft);
+    font-size: 15px;
+    line-height: 1.7;
+    margin: 0;
+    flex-grow: 1;
+}
+.week-card .week-counts {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    gap: 20px;
+    font-size: 13px;
+    color: var(--ink-muted);
+    flex-wrap: wrap;
+}
+.week-card .week-counts strong {
+    color: var(--ink);
+    font-weight: 600;
+    font-family: var(--font-en);
+}
+
+/* ---------- Week detail page ---------- */
+.week-hero {
+    background: var(--paper-alt);
+    border-bottom: 1px solid var(--rule-strong);
+    padding: 64px 0 56px;
+}
+.breadcrumb {
+    margin-bottom: 24px;
+    font-size: 14px;
+    color: var(--ink-muted);
+}
+.breadcrumb a {
+    color: var(--brand-700);
+    font-weight: 500;
+}
+.week-hero h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(32px, 4.5vw, 46px);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin: 0 0 16px;
+    color: var(--ink);
+}
+.week-hero .meta-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    color: var(--ink-muted);
+    font-size: 14px;
+}
+.week-hero .meta-row .num { font-weight: 600; color: var(--ink); }
+.week-hero .meta-row span:not(:last-child)::after {
+    content: "·";
+    margin-left: 24px;
+    color: var(--ink-subtle);
+}
+
+/* ---------- Narrative (Claude-generated trend report) ---------- */
+.narrative {
+    padding: 64px 0 24px;
+    font-family: var(--font-serif);
+    font-size: 17px;
+    line-height: 1.85;
+    color: var(--ink);
+}
+.narrative > h1 { display: none; }
+.narrative h2 {
+    font-family: var(--font-serif);
+    font-size: 28px;
+    font-weight: 700;
+    margin: 56px 0 16px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    position: relative;
+    padding-bottom: 12px;
+}
+.narrative h2::after {
+    content: "";
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 32px;
+    height: 2px;
+    background: var(--brand-600);
+}
+.narrative h2:first-child { margin-top: 0; }
+.narrative h3 {
+    font-family: var(--font-serif);
+    font-size: 20px;
+    font-weight: 700;
+    margin: 32px 0 12px;
+    color: var(--ink);
+}
+.narrative p { margin: 0 0 18px; }
+.narrative ul, .narrative ol {
+    margin: 0 0 22px;
+    padding-left: 28px;
+}
+.narrative li { margin-bottom: 8px; line-height: 1.8; }
+.narrative strong { color: var(--brand-800); font-weight: 700; }
+.narrative em { color: var(--ink-soft); font-style: normal; border-bottom: 1px dotted var(--brand-500); padding-bottom: 1px; }
+.narrative code {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    background: var(--brand-50);
+    color: var(--brand-800);
+    padding: 1px 6px;
+    border-radius: 3px;
+}
+.narrative blockquote {
+    margin: 24px 0;
+    padding: 4px 0 4px 24px;
+    border-left: 3px solid var(--brand-500);
+    color: var(--ink-soft);
+    font-style: italic;
+}
+
+/* ---------- Items section ---------- */
+.items-section {
+    padding: 64px 0 96px;
+    border-top: 1px solid var(--rule);
+    margin-top: 56px;
+}
+.items {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.item {
+    padding: 32px 0;
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+}
+.item:last-child { border-bottom: none; }
+.item-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: baseline;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+.item-title {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.35;
+    margin: 0;
+    flex: 1 1 auto;
+    letter-spacing: -0.01em;
+}
+.item-title a { color: var(--ink); }
+.item-title a:hover { color: var(--brand-700); text-decoration: none; }
+.item-scores {
+    font-family: var(--font-en);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+.item-scores .score-num { color: var(--ink); font-weight: 600; }
+.item-source {
+    color: var(--ink-muted);
+    font-size: 14px;
+    margin: 0 0 14px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.item-source .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-family: var(--font-en);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+/* Five topic colors */
+.badge.cat-academic      { background: var(--c-academic-bg); color: var(--c-academic); }
+.badge.cat-consulting    { background: var(--c-consulting-bg); color: var(--c-consulting); }
+.badge.cat-international { background: var(--c-international-bg); color: var(--c-international); }
+.badge.cat-media         { background: var(--c-media-bg); color: var(--c-media); }
+.badge.cat-china         { background: var(--c-china-bg); color: var(--c-china); }
+
+.item-summary {
+    margin: 0 0 14px;
+    color: var(--ink);
+    line-height: 1.8;
+    font-size: 15.5px;
+}
+.item-china {
+    margin-top: 16px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, var(--brand-50) 0%, #fff 100%);
+    border-left: 3px solid var(--brand-600);
+    border-radius: 4px;
+    font-size: 14.5px;
+    line-height: 1.8;
+    color: var(--ink-soft);
+}
+.item-china::before {
+    content: "对中国企业的启示";
+    display: block;
+    font-family: var(--font-en);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--brand-700);
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.item-tags {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.tag {
+    display: inline-block;
+    padding: 3px 10px;
+    background: var(--paper-alt);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    transition: background 0.15s;
+}
+.tag:hover { background: var(--rule); }
+
+/* ---------- Footer ---------- */
+.site-footer {
+    border-top: 1px solid var(--rule);
+    margin-top: 80px;
+    padding: 32px 0 56px;
+    color: var(--ink-muted);
+    font-size: 13px;
+    background: var(--paper-alt);
+}
+.site-footer .row {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+}
+.site-footer .brand-mini {
+    font-family: var(--font-serif);
+    font-weight: 700;
+    color: var(--ink);
+}
+
+/* ---------- Empty state ---------- */
+.empty-state {
+    text-align: center;
+    padding: 80px 0;
+    color: var(--ink-muted);
+}
+.empty-state h3 {
+    font-family: var(--font-serif);
+    color: var(--ink);
+    font-size: 22px;
+    margin-bottom: 8px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 720px) {
+    .container, .container-narrow { padding: 0 20px; }
+    .hero-inner { padding: 48px 0 72px; }
+    .hero .stats { gap: 32px; margin-top: 36px; }
+    .hero .stat-value { font-size: 36px; }
+    .narrative { padding: 40px 0 16px; font-size: 16px; }
+    .narrative h2 { font-size: 24px; margin-top: 40px; }
+    .week-card { padding: 28px 24px; }
+    .item-header { flex-direction: column; gap: 8px; }
+}

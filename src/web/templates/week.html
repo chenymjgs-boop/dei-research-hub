@@ -1,0 +1,78 @@
+{% extends "_layout.html" %}
+{% block title %}{{ week.title }} · DEI 研究 Hub{% endblock %}
+{% block body %}
+<header class="site-header on-paper">
+    <div class="container">
+        <div class="row">
+            <a class="brand" href="{{ root }}index.html">DEI 研究 Hub</a>
+            <span class="nav-back"><a href="{{ root }}index.html">← 返回所有周报</a></span>
+        </div>
+    </div>
+</header>
+
+<div class="week-hero">
+    <div class="container-narrow">
+        <div class="breadcrumb">
+            <a href="{{ root }}index.html">所有周报</a> &nbsp;/&nbsp; {{ week.week_key }}
+        </div>
+        <h1>{{ week.title }}</h1>
+        <div class="meta-row">
+            <span><span class="num">{{ week.start_date }}</span> → <span class="num">{{ week.end_date }}</span></span>
+            <span>共 <span class="num">{{ week.item_count }}</span> 条研究</span>
+        </div>
+    </div>
+</div>
+
+<section class="container-narrow">
+    <article class="narrative">
+        {{ week.narrative_html | safe }}
+    </article>
+</section>
+
+{% if items %}
+<section class="items-section">
+    <div class="container-narrow">
+        <div class="section-head">
+            <p class="section-eyebrow">Featured Research · 本周纳入研究</p>
+            <h2 class="section-title">{{ items | length }} 篇研究</h2>
+        </div>
+
+        <div class="items">
+        {% for it in items %}
+            <article class="item">
+                <div class="item-header">
+                    <h3 class="item-title"><a href="{{ it.url }}" target="_blank" rel="noopener">{{ it.title }}</a></h3>
+                    <div class="item-scores">
+                        <span>相关 <span class="score-num">{{ it.relevance_score }}/5</span></span>
+                        <span>严谨 <span class="score-num">{{ it.rigor_score }}/5</span></span>
+                    </div>
+                </div>
+                <p class="item-source">
+                    {% if it.source_category %}
+                    <span class="badge cat-{{ it.source_category }}">{{ it.source_category }}</span>
+                    {% endif %}
+                    <span>{{ it.source_name }}</span>
+                    <span>·</span>
+                    <span class="num">{{ it.published_at_label }}</span>
+                    {% if it.evidence_type %}
+                    <span>·</span>
+                    <span>{{ it.evidence_type }}</span>
+                    {% endif %}
+                </p>
+                {% if it.zh_summary %}<p class="item-summary">{{ it.zh_summary }}</p>{% endif %}
+                {% if it.china_implication %}
+                <div class="item-china">{{ it.china_implication }}</div>
+                {% endif %}
+                {% if it.topics or it.industries %}
+                <div class="item-tags">
+                    {% for t in it.topics %}<span class="tag">{{ t }}</span>{% endfor %}
+                    {% for t in it.industries %}<span class="tag">{{ t }}</span>{% endfor %}
+                </div>
+                {% endif %}
+            </article>
+        {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
