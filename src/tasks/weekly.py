@@ -1,6 +1,6 @@
 """Weekly trend report orchestrator.
 
-Reads the last 7 days of analyzed items from SQLite, asks Claude to synthesize a
+Reads the last 7 days of analyzed items from SQLite, asks the configured LLM to synthesize a
 trend report, persists the report to the `weekly_reports` table, regenerates the
 cumulative static-site hub, and notifies Feishu.
 """

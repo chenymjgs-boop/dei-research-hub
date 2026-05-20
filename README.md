@@ -3,7 +3,7 @@
 > A globally connected, locally rooted DEI research pipeline for in-house and consulting DEI practitioners in China.
 
 每天自动从全球 DEI 研究、咨询机构、国际组织和行业媒体抓取最新内容，
-通过 Claude 进行双语摘要、本地化洞察、主题分类，
+通过 GPT 进行双语摘要、本地化洞察、主题分类，
 推送到飞书多维表格 + 群聊卡片，每周自动生成趋势周报。
 
 ---
@@ -13,7 +13,7 @@
 | 模块 | 能力 |
 |---|---|
 | **Sourcing** | 5 类来源 · 20+ 个站点：HBR、MIT Sloan、SSRN、McKinsey、BCG、Deloitte、Catalyst、UN Women、ILO、OECD、WEF、SHRM、HR Dive、DiversityInc 以及中国本土来源（HBR 中文、智联研究院、人瑞、36氪 等） |
-| **AI 分析** | 由 Claude 生成中英文双语摘要、关键要点、**对中国企业的启示**、主题/行业标签、证据类型、严谨度与相关性评分 |
+| **AI 分析** | 由 GPT 生成中英文双语摘要、关键要点、**对中国企业的启示**、主题/行业标签、证据类型、严谨度与相关性评分 |
 | **存储** | SQLite 自动去重，每条研究只处理一次；保留全部历史 |
 | **飞书集成** | 多维表格（Bitable）作为可检索知识库 + 群聊每日卡片 + 每周自动生成飞书云文档周报 |
 | **运行方式** | GitHub Actions 定时任务，零服务器，零成本 |
@@ -32,7 +32,7 @@ dei-research-assistant/
 │   │   ├── base.py            # RawItem + RSS/HTML 抓取基类
 │   │   └── registry.py        # ⭐ 所有源在这里注册
 │   ├── processing/
-│   │   ├── analyzer.py        # Claude API 调用
+│   │   ├── analyzer.py        # LLM API 调用
 │   │   └── prompts.py         # 提示词（在这里调优 AI 输出）
 │   ├── storage/database.py    # SQLite 去重与历史
 │   ├── delivery/feishu.py     # 飞书 Bitable + 群聊 + 云文档
@@ -52,8 +52,8 @@ dei-research-assistant/
 
 ### 1. 准备 API Keys
 
-#### Claude API
-1. 访问 https://console.anthropic.com/
+#### OpenAI API
+1. 访问 https://platform.openai.com/api-keys
 2. 创建 API key，复制保存
 
 #### 飞书自建应用
@@ -125,7 +125,7 @@ python main.py weekly
 1. 把项目推送到一个 GitHub 仓库（建议私有仓库）
 2. 在仓库 **Settings → Secrets and variables → Actions** 添加：
    **Repository secrets:**
-   - `ANTHROPIC_API_KEY`
+   - `OPENAI_API_KEY`
    - `FEISHU_APP_ID`
    - `FEISHU_APP_SECRET`
    - `FEISHU_BITABLE_APP_TOKEN`
@@ -134,13 +134,24 @@ python main.py weekly
    - `FEISHU_DOC_FOLDER_TOKEN`（可选）
 
    **Repository variables:**
-   - `CLAUDE_MODEL` = `claude-opus-4-6`（或其他模型）
+   - `LLM_PROVIDER` = `openai`
+   - `OPENAI_MODEL` = `gpt-5.4-mini`（可按预算改为 `gpt-5.4` / `gpt-5.5`）
    - `MAX_ITEMS_PER_RUN` = `40`
    - `MAX_ITEMS_PER_SOURCE` = `8`
    - `LOOKBACK_DAYS` = `7`
 
 3. 在 **Actions** 标签页手动触发一次 `DEI Daily Research Run` 测试
 4. 之后每天北京时间 07:30 自动运行；每周一 06:00 自动跑周报
+
+### 4. 发布到 GitHub Pages 周报网站
+
+仓库已配置 GitHub Pages Actions 部署：`daily` 会在每日入库后重建
+`reports/site` 并发布，`weekly` 会在生成新周报后发布。
+
+在 GitHub 仓库 **Settings → Pages** 中，将 **Build and deployment → Source**
+设置为 **GitHub Actions**。之后每次 workflow 成功结束，站点会更新到：
+
+`https://chenymjgs-boop.github.io/dei-research-hub/`
 
 ---
 
@@ -160,7 +171,7 @@ RSS 优先（稳定、低成本、尊重发布方）。
 编辑 `.github/workflows/daily.yml` 中的 `cron` 表达式。
 
 ### 切换 LLM
-当前使用 Claude；如需切换 OpenAI 或国产模型，只需重写 `src/processing/analyzer.py` 中的 `_call` 方法。
+当前默认使用 OpenAI Responses API。可通过 `LLM_PROVIDER=openai|anthropic` 切换后端；模型通过 `OPENAI_MODEL` 或 `CLAUDE_MODEL` 调整。
 
 ---
 

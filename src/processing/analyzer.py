@@ -1,28 +1,38 @@
-"""Claude-powered analysis: per-item enrichment + weekly trend synthesis.
+"""LLM-powered analysis: per-item enrichment + weekly trend synthesis.
 
-Backend: Claude Agent SDK (uses the Claude Code CLI's local authentication —
-i.e. your Claude Max subscription). No ANTHROPIC_API_KEY required.
+Default backend: OpenAI Responses API (`openai` package).
+Anthropic is still available by setting LLM_PROVIDER=anthropic.
 
-Requirements:
-- Claude Code CLI installed and logged in (`claude /login`)
-- `claude-agent-sdk` Python package
+Setup:
+- Set OPENAI_API_KEY in .env (local) or GitHub Secrets (CI).
+- Optionally override OPENAI_MODEL (default: gpt-5.4-mini).
 """
 from __future__ import annotations
 
-import asyncio
 import json
-import os
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional
 
-from claude_agent_sdk import (
-    AssistantMessage,
-    ClaudeAgentOptions,
-    TextBlock,
-    query,
+from anthropic import (
+    Anthropic,
+    APIStatusError as AnthropicAPIStatusError,
+    APITimeoutError as AnthropicAPITimeoutError,
+    RateLimitError as AnthropicRateLimitError,
 )
-from tenacity import retry, stop_after_attempt, wait_exponential
+from openai import (
+    OpenAI,
+    APIStatusError as OpenAIAPIStatusError,
+    APITimeoutError as OpenAIAPITimeoutError,
+    RateLimitError as OpenAIRateLimitError,
+)
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from ..config import SETTINGS
 from ..sources.base import RawItem
@@ -36,21 +46,86 @@ from .prompts import (
 
 LOGGER = get_logger(__name__)
 
+RETRYABLE_LLM_ERRORS = (
+    AnthropicRateLimitError,
+    AnthropicAPITimeoutError,
+    AnthropicAPIStatusError,
+    OpenAIRateLimitError,
+    OpenAIAPITimeoutError,
+    OpenAIAPIStatusError,
+)
+
 
 @dataclass
 class AnalyzedItem:
+    """v2 analyzed item.
+
+    Field naming convention:
+    - implication_*  : per-client-segment narrative ("不直接相关" if not applicable)
+    - relevance_*    : per-client-segment 0-5 score
+    - overall_relevance : single composite score (replaces v1's relevance_score)
+
+    `china_implication` is kept as a backward-compatibility alias for
+    `implication_mnc_china`. New code should write to implication_mnc_china;
+    legacy callers reading china_implication continue to work via property.
+    """
+
     raw: RawItem
+
+    # Bilingual outputs
+    title_zh: str = ""
     en_summary: str = ""
     zh_summary: str = ""
     key_takeaways: List[str] = field(default_factory=list)
-    china_implication: str = ""
+
+    # Three pillars (multi-select): subset of {"global", "mnc_china", "china_going_global"}
+    pillars: List[str] = field(default_factory=list)
+
+    # Per-client-segment outputs
+    implication_mnc_china: str = ""
+    implication_esg_listing: str = ""
+    implication_going_global: str = ""
+    relevance_mnc_china: int = 0
+    relevance_esg_listing: int = 0
+    relevance_going_global: int = 0
+
+    # Competitor intelligence (only set if raw.is_competitor=True)
+    competitor_intelligence: str = ""
+
+    # v2.1: stance — narrative dimension for "DEI 回撤 vs 坚守" framing.
+    # One of: "" (neutral) / backlash / persist / mainstream / controversy
+    stance: str = ""
+
+    # Tags & quality
     topics: List[str] = field(default_factory=list)
     industries: List[str] = field(default_factory=list)
     evidence_type: str = ""
     rigor_score: int = 0
-    relevance_score: int = 0
+    overall_relevance: int = 0
+
+    # Metadata
     analyzed_at: Optional[datetime] = None
     error: Optional[str] = None
+
+    # ---- Backward-compatibility aliases (v1 callers) ----
+
+    @property
+    def china_implication(self) -> str:
+        """v1 alias — maps to implication_mnc_china."""
+        return self.implication_mnc_china
+
+    @china_implication.setter
+    def china_implication(self, value: str) -> None:
+        self.implication_mnc_china = value
+
+    @property
+    def relevance_score(self) -> int:
+        """v1 alias — maps to overall_relevance."""
+        return self.overall_relevance
+
+    @relevance_score.setter
+    def relevance_score(self, value: int) -> None:
+        self.overall_relevance = value
 
     def is_valid(self) -> bool:
         return bool(self.zh_summary and not self.error)
@@ -58,84 +133,124 @@ class AnalyzedItem:
 
 class Analyzer:
     def __init__(self, model: Optional[str] = None) -> None:
-        # `model` is forwarded to the Claude Code CLI as --model; if the CLI
-        # rejects an unknown value it falls back to the default for the
-        # subscription tier. No API key required.
-        self.model = model or SETTINGS.claude_model
+        self.provider = SETTINGS.llm_provider
+        if self.provider == "openai":
+            self.model = model or SETTINGS.openai_model
+            api_key = SETTINGS.openai_api_key
+            if not api_key or api_key.startswith("sk-xxxxxxxx") or api_key.startswith("sk-proj-xxxxxxxx"):
+                raise RuntimeError(
+                    "OPENAI_API_KEY is missing or still set to the placeholder. "
+                    "Set a real key in .env (local) or GitHub Secrets (CI)."
+                )
+            self.client = OpenAI(api_key=api_key, max_retries=0)
+        elif self.provider == "anthropic":
+            self.model = model or SETTINGS.claude_model
+            api_key = SETTINGS.anthropic_api_key
+            if not api_key or api_key.startswith("sk-ant-xxx"):
+                raise RuntimeError(
+                    "ANTHROPIC_API_KEY is missing or still set to the placeholder. "
+                    "Set a real key in .env (local) or GitHub Secrets (CI)."
+                )
+            self.client = Anthropic(api_key=api_key)
+        else:
+            raise RuntimeError(
+                "Unsupported LLM_PROVIDER. Use 'openai' or 'anthropic'."
+            )
+        self.request_delay_seconds = SETTINGS.llm_request_delay_seconds
 
     # ------------- per-item -------------
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=20), reraise=True)
-    def _call(self, system: str, user: str, max_tokens: int = 1500) -> str:
-        # max_tokens is unused — the SDK / CLI controls token budget.
-        # Kept in signature for backward compatibility with callers.
-        return asyncio.run(self._call_async(system, user))
+    @retry(
+        stop=stop_after_attempt(4),
+        wait=wait_exponential(min=20, max=60),
+        retry=retry_if_exception_type(RETRYABLE_LLM_ERRORS),
+        reraise=True,
+    )
+    def _call(self, system: str, user: str, max_tokens: int = 2500) -> str:
+        if self.provider == "openai":
+            return self._call_openai(system, user, max_tokens=max_tokens)
+        return self._call_anthropic(system, user, max_tokens=max_tokens)
 
-    async def _call_async(self, system: str, user: str) -> str:
-        # Strip ANTHROPIC_API_KEY from the subprocess env. Otherwise the bundled
-        # CLI prefers it over OAuth and any placeholder/invalid key in .env will
-        # cause "Invalid API key" failures. Removing it forces the CLI to use
-        # the Max-subscription OAuth credentials it was logged into.
-        sub_env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
-
-        options = ClaudeAgentOptions(
-            system_prompt=system,
-            # When the prompt contains a URL, the model often tries to call
-            # WebFetch first. With allowed_tools=[] each attempt is denied and
-            # consumes a turn. The system prompt now explicitly forbids tool
-            # use, but a stubborn model may still attempt one or two times
-            # before complying. Eight turns gives ample headroom while still
-            # bounding total cost / latency per item.
-            max_turns=8,
-            allowed_tools=[],
+    def _call_openai(self, system: str, user: str, max_tokens: int = 2500) -> str:
+        response = self.client.responses.create(
             model=self.model,
-            env=sub_env,
+            instructions=system,
+            input=user,
+            max_output_tokens=max_tokens,
         )
-        parts: List[str] = []
-        async for msg in query(prompt=user, options=options):
-            if isinstance(msg, AssistantMessage):
-                for block in msg.content:
-                    if isinstance(block, TextBlock):
-                        parts.append(block.text)
-        return "\n".join(parts).strip()
+        text = getattr(response, "output_text", None)
+        if text:
+            return text.strip()
+
+        chunks: list[str] = []
+        for item in getattr(response, "output", []) or []:
+            for block in getattr(item, "content", []) or []:
+                if getattr(block, "type", "") == "output_text":
+                    chunks.append(getattr(block, "text", ""))
+        return "".join(chunks).strip()
+
+    def _call_anthropic(self, system: str, user: str, max_tokens: int = 2500) -> str:
+        # Cache the system prompt (ephemeral, 5-min TTL) so back-to-back
+        # items in a batch reuse the cached prefix at ~10% the input cost.
+        msg = self.client.messages.create(
+            model=self.model,
+            max_tokens=max_tokens,
+            system=[
+                {
+                    "type": "text",
+                    "text": system,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+            messages=[{"role": "user", "content": user}],
+        )
+        return "".join(
+            block.text for block in msg.content if getattr(block, "type", "") == "text"
+        ).strip()
 
     def analyze_item(self, item: RawItem) -> AnalyzedItem:
         from ..utils import now_utc
 
         content = clean_text(item.summary, max_chars=5000) or item.title
-        # Google News redirect URLs cannot be fetched (the page is JS-only and
-        # there's no HTTP redirect). Annotate so the model doesn't waste turns
-        # attempting WebFetch — even though the system prompt forbids tools,
-        # an explicit hint at the URL itself further reduces stubborn retries.
-        url_for_prompt = item.url
-        if "news.google.com" in item.url:
-            url_for_prompt = (
-                f"{item.url} (Google News redirect — not directly fetchable; "
-                "analyze using only the title and summary below)"
-            )
         prompt = ANALYZE_USER_TEMPLATE.format(
             title=item.title,
             source_name=item.source_name,
             source_category=item.source_category,
             region=item.region,
+            is_competitor_zh="是" if item.is_competitor else "否",
             authors=", ".join(item.authors) or "未署名",
             published_at=item.published_at.isoformat() if item.published_at else "未知",
-            url=url_for_prompt,
+            url=item.url,
             content=content,
         )
         analyzed = AnalyzedItem(raw=item, analyzed_at=now_utc())
         try:
-            raw = self._call(ANALYZE_SYSTEM, prompt, max_tokens=1500)
+            raw = self._call(ANALYZE_SYSTEM, prompt, max_tokens=2500)
             data = _extract_json(raw)
-            analyzed.en_summary = data.get("en_summary", "")
-            analyzed.zh_summary = data.get("zh_summary", "")
+            analyzed.title_zh = data.get("title_zh", "") or ""
+            analyzed.en_summary = data.get("en_summary", "") or ""
+            analyzed.zh_summary = data.get("zh_summary", "") or ""
             analyzed.key_takeaways = data.get("key_takeaways", []) or []
-            analyzed.china_implication = data.get("china_implication", "")
+            analyzed.pillars = _normalize_pillars(data.get("pillars", []))
+            analyzed.implication_mnc_china = data.get("implication_mnc_china", "") or ""
+            analyzed.implication_esg_listing = data.get("implication_esg_listing", "") or ""
+            analyzed.implication_going_global = data.get("implication_going_global", "") or ""
+            analyzed.relevance_mnc_china = _clamp_score(data.get("relevance_mnc_china"))
+            analyzed.relevance_esg_listing = _clamp_score(data.get("relevance_esg_listing"))
+            analyzed.relevance_going_global = _clamp_score(data.get("relevance_going_global"))
+            if item.is_competitor:
+                analyzed.competitor_intelligence = data.get("competitor_intelligence", "") or ""
+            else:
+                analyzed.competitor_intelligence = ""
             analyzed.topics = data.get("topics", []) or []
             analyzed.industries = data.get("industries", []) or []
-            analyzed.evidence_type = data.get("evidence_type", "")
-            analyzed.rigor_score = int(data.get("rigor_score", 0) or 0)
-            analyzed.relevance_score = int(data.get("relevance_score", 0) or 0)
+            analyzed.evidence_type = data.get("evidence_type", "") or ""
+            analyzed.rigor_score = _clamp_score(data.get("rigor_score"), max_v=5)
+            analyzed.overall_relevance = _clamp_score(
+                data.get("overall_relevance", data.get("relevance_score")), max_v=5
+            )
+            stance = (data.get("stance") or "").strip().lower()
+            analyzed.stance = stance if stance in {"backlash", "persist", "mainstream", "controversy"} else ""
         except Exception as exc:  # noqa: BLE001
             LOGGER.warning("Analyze failed for %s: %s", item.url, exc)
             analyzed.error = str(exc)
@@ -144,6 +259,12 @@ class Analyzer:
     def analyze_batch(self, items: List[RawItem]) -> List[AnalyzedItem]:
         results: List[AnalyzedItem] = []
         for i, item in enumerate(items, 1):
+            if i > 1 and self.request_delay_seconds > 0:
+                LOGGER.info(
+                    "Waiting %.1fs before next LLM request to respect rate limits",
+                    self.request_delay_seconds,
+                )
+                time.sleep(self.request_delay_seconds)
             LOGGER.info("[%d/%d] Analyzing: %s", i, len(items), item.title[:80])
             results.append(self.analyze_item(item))
         return results
@@ -155,15 +276,22 @@ class Analyzer:
     ) -> str:
         compact = [
             {
-                "title": a.raw.title,
+                "title": a.title_zh or a.raw.title,
                 "url": a.raw.url,
                 "source": a.raw.source_name,
-                "category": a.raw.source_category,
+                "source_category": a.raw.source_category,
                 "region": a.raw.region,
+                "is_competitor": a.raw.is_competitor,
+                "pillars": a.pillars,
                 "zh_summary": a.zh_summary,
                 "topics": a.topics,
                 "rigor": a.rigor_score,
-                "relevance": a.relevance_score,
+                "overall_relevance": a.overall_relevance,
+                "relevance_mnc_china": a.relevance_mnc_china,
+                "relevance_esg_listing": a.relevance_esg_listing,
+                "relevance_going_global": a.relevance_going_global,
+                "competitor_intelligence": a.competitor_intelligence,
+                "stance": a.stance,
             }
             for a in items
             if a.is_valid()
@@ -178,17 +306,50 @@ class Analyzer:
         return self._call(WEEKLY_TREND_SYSTEM, prompt, max_tokens=4000)
 
 
-def _extract_json(text: str) -> dict:
-    """Tolerant JSON extraction.
+_VALID_PILLARS = {"global", "mnc_china", "china_going_global"}
 
-    Strategy (in order of preference):
-    1. Strip ```json fences and isolate the outermost {...} block.
-    2. Try strict json.loads.
-    3. On failure, fall back to `json_repair`, which handles the most common
-       breakages: unescaped ASCII double-quotes inside string values
-       (a frequent failure mode for Chinese-language outputs), trailing commas,
-       missing braces, etc.
-    """
+
+def _normalize_pillars(value) -> List[str]:
+    """Coerce model output for `pillars` into a clean list[str]."""
+    if not value:
+        return []
+    if isinstance(value, str):
+        value = [v.strip() for v in value.replace(";", ",").split(",")]
+    if not isinstance(value, list):
+        return []
+    seen = set()
+    out: List[str] = []
+    for v in value:
+        if not isinstance(v, str):
+            continue
+        v = v.strip().lower()
+        v = {
+            "mnc_in_china": "mnc_china",
+            "going_global": "china_going_global",
+            "global_frontier": "global",
+        }.get(v, v)
+        if v in _VALID_PILLARS and v not in seen:
+            out.append(v)
+            seen.add(v)
+    return out
+
+
+def _clamp_score(value, min_v: int = 0, max_v: int = 5) -> int:
+    """Coerce a model-supplied score into an int in [min_v, max_v]."""
+    if value is None:
+        return min_v
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        try:
+            n = int(float(value))
+        except (TypeError, ValueError):
+            return min_v
+    return max(min_v, min(max_v, n))
+
+
+def _extract_json(text: str) -> dict:
+    """Tolerant JSON extraction (handles ```json fences, ASCII-quote breakage, etc.)."""
     text = text.strip()
     if text.startswith("```"):
         lines = text.splitlines()
@@ -209,6 +370,4 @@ def _extract_json(text: str) -> dict:
         repaired = repair_json(text, return_objects=True)
         if isinstance(repaired, dict):
             return repaired
-        # `repair_json` may return a string when even repair fails — re-raise
-        # the original error semantics in that case.
         raise

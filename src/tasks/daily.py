@@ -4,7 +4,7 @@ Pipeline:
     fetch_all sources
     → dedup against DB
     → cap by relevance heuristics
-    → Claude analyze
+    → LLM analyze
     → save to SQLite
     → push to Feishu (Bitable + daily card)
 """
@@ -44,7 +44,7 @@ def run_daily() -> None:
         LOGGER.info("Nothing new today — exiting")
         return
 
-    # 4. Analyze with Claude
+    # 4. Analyze with the configured LLM
     analyzer = Analyzer()
     analyzed = analyzer.analyze_batch(new_items)
     valid = [a for a in analyzed if a.is_valid()]

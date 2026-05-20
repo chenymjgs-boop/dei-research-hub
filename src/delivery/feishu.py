@@ -72,25 +72,15 @@ class FeishuClient:
     # ---------- Bitable ----------
 
     def push_to_bitable(self, items: List[AnalyzedItem]) -> int:
-        """Append every analyzed item as a row to the configured Bitable.
+        """Append every analyzed item as a row to the configured v2 Bitable.
 
-        Field name conventions (in Chinese, must exist in the Bitable):
-            标题 (text)
-            链接 (url)
-            来源 (text)
-            类别 (单选: academic/consulting/international/media/china)
-            地域 (单选: global/china)
-            发布日期 (datetime)
-            英文摘要 (text)
-            中文摘要 (text)
-            关键要点 (text)
-            对中国的启示 (text)
-            话题 (多选)
-            行业 (多选)
-            证据类型 (单选)
-            严谨度 (number)
-            相关性 (number)
-            收录日期 (datetime)
+        v2 field names (must exist in the Bitable; run scripts/migrate_v1_to_v2.py first):
+            标题, 链接, 来源, 来源类别, 来源地域, 来源子类型, 发布日期, 收录日期,
+            中文标题, 英文摘要, 中文摘要, 关键要点,
+            板块, 是否竞品,
+            对跨国在华客户的启示, 对中国ESG/上市客户的启示, 对中国企业出海客户的启示,
+            在华跨国相关度, ESG上市相关度, 出海相关度,
+            竞品情报, 话题, 行业, 证据类型, 严谨度, 综合相关性
         """
         app_token = SETTINGS.feishu_bitable_app_token
         table_id = SETTINGS.feishu_bitable_table_id
@@ -107,18 +97,31 @@ class FeishuClient:
                 "标题": r.title,
                 "链接": {"link": r.url, "text": r.title[:50]},
                 "来源": r.source_name,
-                "类别": r.source_category,
-                "地域": r.region,
+                "来源类别": r.source_category,
+                "来源地域": r.region,
+                "中文标题": a.title_zh,
                 "英文摘要": a.en_summary,
                 "中文摘要": a.zh_summary,
                 "关键要点": "\n".join(f"• {t}" for t in a.key_takeaways),
-                "对中国的启示": a.china_implication,
+                "板块": a.pillars,
+                "是否竞品": "是" if r.is_competitor else "否",
+                "对跨国在华客户的启示": a.implication_mnc_china,
+                "对中国ESG/上市客户的启示": a.implication_esg_listing,
+                "对中国企业出海客户的启示": a.implication_going_global,
+                "在华跨国相关度": a.relevance_mnc_china,
+                "ESG上市相关度": a.relevance_esg_listing,
+                "出海相关度": a.relevance_going_global,
+                "竞品情报": a.competitor_intelligence,
                 "话题": a.topics,
                 "行业": a.industries,
                 "证据类型": a.evidence_type,
                 "严谨度": a.rigor_score,
-                "相关性": a.relevance_score,
+                "综合相关性": a.overall_relevance,
             }
+            if a.stance:
+                fields["立场"] = a.stance
+            if r.source_subtype:
+                fields["来源子类型"] = r.source_subtype
             if r.published_at:
                 fields["发布日期"] = int(r.published_at.timestamp() * 1000)
             if a.analyzed_at:
@@ -142,21 +145,34 @@ class FeishuClient:
     # ---------- Chat message (interactive card) ----------
 
     def send_daily_card(self, items: List[AnalyzedItem], date_label: str) -> bool:
-        """Send a Feishu interactive card with the day's top items to a chat."""
+        """Send a Feishu interactive card with the day's items grouped by pillar + competitor.
+
+        v2 layout:
+          - Header counters per pillar
+          - Section 🌍 Global Frontier (pillar=global)
+          - Section 🏢 MNC in China (pillar=mnc_china)
+          - Section 🚀 China Going Global (pillar=china_going_global)
+          - Section ⚠️ Competitor Watch (any item with raw.is_competitor=True)
+        Each item shows three client-relevance scores so the consultant can
+        spot which client segment to surface it to.
+        """
+        from ..processing.classifier import (
+            CLIENT_LABELS_ZH,
+            client_score,
+            group_by_pillar,
+            rank_by_relevance,
+            split_competitors,
+        )
+
         chat_id = SETTINGS.feishu_chat_id
         if not chat_id:
             LOGGER.info("FEISHU_CHAT_ID not set — skipping chat push")
             return False
-        if not items:
+        valid_items = [a for a in items if a.is_valid()]
+        if not valid_items:
             return False
 
-        # Sort by relevance × rigor and keep top N
-        ranked = sorted(
-            [a for a in items if a.is_valid()],
-            key=lambda a: (a.relevance_score, a.rigor_score),
-            reverse=True,
-        )[:10]
-
+        ranked = rank_by_relevance(valid_items)
         card = self._build_daily_card(ranked, date_label)
         self._post(
             "/im/v1/messages?receive_id_type=chat_id",
@@ -170,39 +186,81 @@ class FeishuClient:
         return True
 
     def _build_daily_card(self, items: List[AnalyzedItem], date_label: str) -> dict:
+        from ..processing.classifier import (
+            CLIENT_LABELS_ZH,
+            client_score,
+            group_by_pillar,
+            split_competitors,
+        )
+
+        # Group structures
+        by_pillar = group_by_pillar(items)
+        comp_items, _regular = split_competitors(items)
+
+        # Header summary
         elements: list[dict] = [
             {
                 "tag": "div",
                 "text": {
                     "tag": "lark_md",
                     "content": (
-                        f"**今日 DEI 全球研究简报 · {date_label}**\n"
-                        f"共收录 {len(items)} 条精选研究，按相关度排序。"
+                        f"**今日 DEI 情报 · {date_label}**\n"
+                        f"共 **{len(items)}** 条精选 · "
+                        f"全球前沿 {len(by_pillar.get('global', []))} · "
+                        f"在华跨国 {len(by_pillar.get('mnc_china', []))} · "
+                        f"中国出海 {len(by_pillar.get('china_going_global', []))} · "
+                        f"竞品 {len(comp_items)}"
                     ),
                 },
             },
             {"tag": "hr"},
         ]
-        for i, a in enumerate(items, 1):
-            r = a.raw
-            topics = " · ".join(a.topics[:3]) if a.topics else "—"
-            content = (
-                f"**{i}. [{r.title}]({r.url})**\n"
-                f"📍 {r.source_name} | {r.region} | 🏷 {topics} | "
-                f"⭐ 相关度 {a.relevance_score}/5\n\n"
-                f"{a.zh_summary}\n\n"
-                f"💡 *对中国企业：* {a.china_implication}"
-            )
-            elements.append(
-                {"tag": "div", "text": {"tag": "lark_md", "content": content}}
-            )
-            if i < len(items):
-                elements.append({"tag": "hr"})
+
+        # Pillar sections (top 3-4 per pillar by client_score)
+        pillar_blocks = [
+            ("🌍 全球前沿 · Global Frontier", "global"),
+            ("🏢 在华跨国 · MNC in China",     "mnc_china"),
+            ("🚀 中国出海 · Going Global",     "china_going_global"),
+        ]
+        for header_text, pkey in pillar_blocks:
+            section = sorted(
+                by_pillar.get(pkey, []),
+                key=lambda a: (client_score(a), a.rigor_score),
+                reverse=True,
+            )[:3]  # top 3 per pillar
+            if not section:
+                continue
+            elements.append({
+                "tag": "div",
+                "text": {"tag": "lark_md", "content": f"**{header_text}**"},
+            })
+            for a in section:
+                elements.append(_format_item_card_block(a))
+            elements.append({"tag": "hr"})
+
+        # Competitor section (separate, highlighted)
+        if comp_items:
+            elements.append({
+                "tag": "div",
+                "text": {"tag": "lark_md", "content": "**⚠️ 竞品动向 · Competitor Watch**"},
+            })
+            for a in comp_items[:5]:
+                elements.append(_format_item_card_block(a, with_competitor_intel=True))
+            elements.append({"tag": "hr"})
+
+        # Footer note about Bitable
+        elements.append({
+            "tag": "note",
+            "elements": [{
+                "tag": "plain_text",
+                "content": "完整内容请查看多维表格知识库",
+            }],
+        })
 
         return {
             "config": {"wide_screen_mode": True},
             "header": {
-                "template": "blue",
+                "template": "purple",
                 "title": {
                     "tag": "plain_text",
                     "content": f"DEI 研究助手 · {date_label}",
@@ -285,3 +343,39 @@ class FeishuClient:
 def _chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i : i + n]
+
+
+def _format_item_card_block(a: AnalyzedItem, with_competitor_intel: bool = False) -> dict:
+    """Render one analyzed item as a Feishu card 'div' block."""
+    r = a.raw
+    title = a.title_zh or r.title
+    competitor_badge = " 🎯竞品" if r.is_competitor else ""
+    topics = " · ".join(a.topics[:3]) if a.topics else ""
+    # Three client-relevance scores compactly displayed (skip zeros)
+    rel_parts = []
+    for label, score in [
+        ("跨国在华", a.relevance_mnc_china),
+        ("ESG/上市", a.relevance_esg_listing),
+        ("出海",       a.relevance_going_global),
+    ]:
+        if score > 0:
+            rel_parts.append(f"{label} {score}/5")
+    rel_line = " · ".join(rel_parts) or "—"
+
+    pieces = [
+        f"**[{title}]({r.url})**{competitor_badge}",
+        f"📍 {r.source_name}  |  ⭐ {rel_line}" + (f"  |  🏷 {topics}" if topics else ""),
+        f"{a.zh_summary}",
+    ]
+    # Highlight the strongest client-segment implication
+    if a.relevance_mnc_china >= max(a.relevance_esg_listing, a.relevance_going_global) and a.implication_mnc_china and "不直接相关" not in a.implication_mnc_china:
+        pieces.append(f"💡 *对在华跨国客户：* {a.implication_mnc_china}")
+    elif a.relevance_esg_listing >= a.relevance_going_global and a.implication_esg_listing and "不直接相关" not in a.implication_esg_listing:
+        pieces.append(f"💡 *对ESG/上市客户：* {a.implication_esg_listing}")
+    elif a.implication_going_global and "不直接相关" not in a.implication_going_global:
+        pieces.append(f"💡 *对出海客户：* {a.implication_going_global}")
+
+    if with_competitor_intel and a.competitor_intelligence:
+        pieces.append(f"🎯 *竞品情报：* {a.competitor_intelligence}")
+
+    return {"tag": "div", "text": {"tag": "lark_md", "content": "\n\n".join(pieces)}}

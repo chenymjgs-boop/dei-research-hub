@@ -39,34 +39,76 @@
 
         <div class="items">
         {% for it in items %}
-            <article class="item">
+            <article class="item v2-item">
                 <div class="item-header">
-                    <h3 class="item-title"><a href="{{ it.url }}" target="_blank" rel="noopener">{{ it.title }}</a></h3>
+                    <div class="item-title-block">
+                        <h3 class="item-title"><a href="{{ it.url }}" target="_blank" rel="noopener">{{ it.title }}</a></h3>
+                        {% if it.title_original %}
+                        <p class="item-title-en">{{ it.title_original }}</p>
+                        {% endif %}
+                    </div>
                     <div class="item-scores">
-                        <span>相关 <span class="score-num">{{ it.relevance_score }}/5</span></span>
-                        <span>严谨 <span class="score-num">{{ it.rigor_score }}/5</span></span>
+                        <div class="overall-rel" title="综合相关性">⭐ <span class="num">{{ it.overall_relevance }}</span>/5</div>
                     </div>
                 </div>
-                <p class="item-source">
-                    {% if it.source_category %}
-                    <span class="badge cat-{{ it.source_category }}">{{ it.source_category }}</span>
+
+                <div class="item-meta-row">
+                    {% for p in it.pillars %}
+                    <span class="badge pillar pillar-{{ p.key }}">{{ p.label }}</span>
+                    {% endfor %}
+                    {% if it.is_competitor %}
+                    <span class="badge competitor">🎯 竞品</span>
                     {% endif %}
-                    <span>{{ it.source_name }}</span>
-                    <span>·</span>
-                    <span class="num">{{ it.published_at_label }}</span>
+                    {% if it.stance_label %}
+                    <span class="badge stance stance-{{ it.stance }}">{{ it.stance_label }}</span>
+                    {% endif %}
+                    <span class="meta-source">{{ it.source_name }}</span>
+                    <span class="meta-dot">·</span>
+                    <span class="meta-date num">{{ it.published_at_label }}</span>
                     {% if it.evidence_type %}
-                    <span>·</span>
-                    <span>{{ it.evidence_type }}</span>
+                    <span class="meta-dot">·</span>
+                    <span class="meta-evidence">{{ it.evidence_type }}</span>
                     {% endif %}
-                </p>
+                </div>
+
+                {# Three-client relevance bar #}
+                <div class="client-rel-bar">
+                    <span class="rel-cell {% if it.relevance_mnc_china >= 4 %}strong{% elif it.relevance_mnc_china >= 2 %}mid{% else %}weak{% endif %}">
+                        在华跨国 <strong>{{ it.relevance_mnc_china }}</strong>/5
+                    </span>
+                    <span class="rel-cell {% if it.relevance_esg_listing >= 4 %}strong{% elif it.relevance_esg_listing >= 2 %}mid{% else %}weak{% endif %}">
+                        ESG/上市 <strong>{{ it.relevance_esg_listing }}</strong>/5
+                    </span>
+                    <span class="rel-cell {% if it.relevance_going_global >= 4 %}strong{% elif it.relevance_going_global >= 2 %}mid{% else %}weak{% endif %}">
+                        出海 <strong>{{ it.relevance_going_global }}</strong>/5
+                    </span>
+                </div>
+
                 {% if it.zh_summary %}<p class="item-summary">{{ it.zh_summary }}</p>{% endif %}
-                {% if it.china_implication %}
-                <div class="item-china">{{ it.china_implication }}</div>
+
+                {# Three implications, only those marked relevant #}
+                {% for imp in it.implications %}
+                <div class="implication {{ imp.css }}">
+                    <div class="imp-head">
+                        <span class="imp-label">{{ imp.label }}</span>
+                        <span class="imp-score">相关 {{ imp.score }}/5</span>
+                    </div>
+                    <p class="imp-text">{{ imp.text }}</p>
+                </div>
+                {% endfor %}
+
+                {# Competitor intelligence — only when applicable #}
+                {% if it.competitor_intelligence %}
+                <div class="competitor-intel">
+                    <div class="ci-head">🎯 竞品情报</div>
+                    <p class="ci-text">{{ it.competitor_intelligence }}</p>
+                </div>
                 {% endif %}
+
                 {% if it.topics or it.industries %}
                 <div class="item-tags">
                     {% for t in it.topics %}<span class="tag">{{ t }}</span>{% endfor %}
-                    {% for t in it.industries %}<span class="tag">{{ t }}</span>{% endfor %}
+                    {% for t in it.industries %}<span class="tag tag-industry">{{ t }}</span>{% endfor %}
                 </div>
                 {% endif %}
             </article>

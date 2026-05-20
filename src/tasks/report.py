@@ -3,7 +3,7 @@
 Pipeline:
     fetch_all sources
     → cap by relevance heuristics
-    → Claude analyze
+    → LLM analyze
     → write markdown to reports/report-YYYY-MM-DD-HHMM.md
 
 No database, no Feishu. Useful for quick local trials without setting up

@@ -29,11 +29,17 @@ class RawItem:
     title: str
     url: str
     source_name: str
-    source_category: str  # academic / consulting / international / media / china
+    source_category: str  # academic / consulting / international_org / media / regulator / china_local / wechat
     published_at: Optional[datetime] = None
     summary: str = ""  # raw teaser/abstract from source feed
     region: str = "global"  # "global" | "china"
     authors: List[str] = field(default_factory=list)
+
+    # v2 source-level metadata. Set by the source registry, NOT by the LLM.
+    # Used by the analyzer prompt to decide whether to populate competitor_intelligence,
+    # and by the renderer to apply special UI treatment for WeChat sources.
+    is_competitor: bool = False
+    source_subtype: str = ""  # e.g. wechat_recruiting / wechat_media / wechat_thinktank / wechat_corporate
 
     @property
     def hash(self) -> str:
@@ -77,11 +83,20 @@ class RSSSource(Source):
         feed_url: str,
         category: str,
         region: str = "global",
+        is_competitor: bool = False,
+        source_subtype: str = "",
+        bypass_dei_filter: bool = False,
     ) -> None:
         self.name = name
         self.feed_url = feed_url
         self.category = category
         self.region = region
+        self.is_competitor = is_competitor
+        self.source_subtype = source_subtype
+        # When True, items from this source skip the DEI keyword pre-filter.
+        # Use for sources presumptively 100% DEI (specialist firms,
+        # competitors, Google-News-already-filtered queries).
+        self.bypass_dei_filter = bypass_dei_filter
 
     def fetch(self, lookback_days: int, limit: int) -> Iterable[RawItem]:
         LOGGER.info("Fetching RSS: %s", self.name)
@@ -127,6 +142,8 @@ class RSSSource(Source):
                 summary=summary,
                 region=self.region,
                 authors=authors,
+                is_competitor=self.is_competitor,
+                source_subtype=self.source_subtype,
             )
             if not item.is_recent(lookback_days):
                 continue
@@ -146,6 +163,9 @@ class HTMLListSource(Source):
         category: str,
         region: str = "global",
         base_url: Optional[str] = None,
+        is_competitor: bool = False,
+        source_subtype: str = "",
+        bypass_dei_filter: bool = False,
     ) -> None:
         self.name = name
         self.list_url = list_url
@@ -154,6 +174,9 @@ class HTMLListSource(Source):
         self.category = category
         self.region = region
         self.base_url = base_url or self._origin(list_url)
+        self.is_competitor = is_competitor
+        self.source_subtype = source_subtype
+        self.bypass_dei_filter = bypass_dei_filter
 
     @staticmethod
     def _origin(url: str) -> str:
@@ -204,5 +227,7 @@ class HTMLListSource(Source):
                 region=self.region,
                 summary="",
                 published_at=None,
+                is_competitor=self.is_competitor,
+                source_subtype=self.source_subtype,
             )
             count += 1

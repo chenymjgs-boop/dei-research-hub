@@ -38,6 +38,7 @@ def build_site(out_dir: Path | None = None) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "weeks").mkdir(exist_ok=True)
     (out_dir / "assets").mkdir(exist_ok=True)
+    (out_dir / ".nojekyll").write_text("", encoding="utf-8")
 
     # Copy static assets
     for f in STATIC_DIR.iterdir():
@@ -83,10 +84,15 @@ def build_site(out_dir: Path | None = None) -> Path:
             page_html, encoding="utf-8"
         )
 
-        # Compute top topics from this week's items for the index card
+        # Compute top topics + pillar distribution + competitor count for the index card
         topic_counter: Counter[str] = Counter()
+        pillar_counter: Counter[str] = Counter()
+        comp_count = 0
         for it in items:
             topic_counter.update(it.topics)
+            pillar_counter.update(it.pillars)
+            if it.raw.is_competitor:
+                comp_count += 1
         top_topics = [t for t, _ in topic_counter.most_common(3)]
 
         # First non-heading paragraph as the index preview
@@ -101,6 +107,12 @@ def build_site(out_dir: Path | None = None) -> Path:
                 "item_count": len(items),
                 "top_topics": top_topics,
                 "preview": preview,
+                "pillar_counts": {
+                    "global":             pillar_counter.get("global", 0),
+                    "mnc_china":          pillar_counter.get("mnc_china", 0),
+                    "china_going_global": pillar_counter.get("china_going_global", 0),
+                },
+                "competitor_count": comp_count,
             }
         )
 
@@ -122,21 +134,62 @@ def build_site(out_dir: Path | None = None) -> Path:
     return out_dir
 
 
+PILLAR_LABELS = {
+    "global":             "全球前沿",
+    "mnc_china":          "在华跨国",
+    "china_going_global": "中国出海",
+}
+
+STANCE_LABELS = {
+    "backlash":     "回撤",
+    "persist":      "坚守",
+    "controversy":  "争议",
+    "mainstream":   "",   # No badge for neutral
+}
+
+ERG_TOPIC = "员工资源组(ERG)"
+
+
 def _item_ctx(item: AnalyzedItem) -> dict:
+    """v2 item context — exposes pillars, competitor flag, three client implications."""
     pub = item.raw.published_at
+    # Build implications list: (label, css_class, text). Skip "不直接相关" entries.
+    implications = []
+    for label, css, text, score in [
+        ("对在华跨国企业的启示",  "imp-mnc",       item.implication_mnc_china,    item.relevance_mnc_china),
+        ("对ESG/上市企业的启示",   "imp-esg",       item.implication_esg_listing,  item.relevance_esg_listing),
+        ("对中国出海企业的启示",   "imp-going",     item.implication_going_global, item.relevance_going_global),
+    ]:
+        if text and "不直接相关" not in text:
+            implications.append({
+                "label": label,
+                "css": css,
+                "text": text,
+                "score": score,
+            })
+
     return {
-        "title": item.raw.title,
+        "title": item.title_zh or item.raw.title,
+        "title_original": item.raw.title if item.title_zh and item.title_zh != item.raw.title else "",
         "url": item.raw.url,
         "source_name": item.raw.source_name,
         "source_category": item.raw.source_category,
+        "is_competitor": item.raw.is_competitor,
+        "stance": item.stance,
+        "stance_label": STANCE_LABELS.get(item.stance, ""),
+        "pillars": [{"key": p, "label": PILLAR_LABELS.get(p, p)} for p in item.pillars],
         "published_at_label": pub.strftime("%Y-%m-%d") if pub else "未知",
         "evidence_type": item.evidence_type,
         "zh_summary": item.zh_summary,
-        "china_implication": item.china_implication,
+        "implications": implications,
+        "competitor_intelligence": item.competitor_intelligence if item.raw.is_competitor else "",
         "topics": item.topics,
         "industries": item.industries,
         "rigor_score": item.rigor_score,
-        "relevance_score": item.relevance_score,
+        "overall_relevance": item.overall_relevance,
+        "relevance_mnc_china": item.relevance_mnc_china,
+        "relevance_esg_listing": item.relevance_esg_listing,
+        "relevance_going_global": item.relevance_going_global,
     }
 
 

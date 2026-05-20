@@ -8,6 +8,12 @@ on:
 
 permissions:
   contents: write   # to commit the SQLite db back
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   daily:
@@ -28,8 +34,9 @@ jobs:
 
       - name: Run daily pipeline
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'openai' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.4-mini' }}
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_BITABLE_APP_TOKEN: ${{ secrets.FEISHU_BITABLE_APP_TOKEN }}
@@ -41,6 +48,9 @@ jobs:
           LOOKBACK_DAYS: ${{ vars.LOOKBACK_DAYS }}
         run: python main.py daily
 
+      - name: Rebuild static hub
+        run: python main.py site
+
       - name: Commit SQLite history
         run: |
           git config user.name "dei-research-bot"
@@ -48,3 +58,15 @@ jobs:
           git add data/research.db || true
           git diff --cached --quiet || git commit -m "chore(data): daily run $(date -u +%Y-%m-%d)"
           git push || true
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload static hub artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: reports/site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

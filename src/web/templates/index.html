@@ -16,7 +16,7 @@
             <h1>全球 DEI 研究<br>每周更新 · 中国视角</h1>
             <p class="lead">
                 汇集来自 HBR、MIT Sloan、SSIR、McKinsey、UN、ILO、HR Dive
-                等 20+ 全球来源的 DEI 研究、报告与判例，由 Claude
+                等 20+ 全球来源的 DEI 研究、报告与判例，由 GPT
                 进行双语摘要、本地化洞察与趋势综合，为中国企业 DEI 实践提供前沿参考。
             </p>
             <div class="stats">
@@ -58,6 +58,14 @@
                         <span>热点：{{ w.top_topics | join(' · ') }}</span>
                         {% endif %}
                     </div>
+                    {% if w.pillar_counts and (w.pillar_counts.global or w.pillar_counts.mnc_china or w.pillar_counts.china_going_global or w.competitor_count) %}
+                    <div class="pillar-stats">
+                        {% if w.pillar_counts.global %}<span class="pstat global">全球前沿 {{ w.pillar_counts.global }}</span>{% endif %}
+                        {% if w.pillar_counts.mnc_china %}<span class="pstat mnc">在华跨国 {{ w.pillar_counts.mnc_china }}</span>{% endif %}
+                        {% if w.pillar_counts.china_going_global %}<span class="pstat going">中国出海 {{ w.pillar_counts.china_going_global }}</span>{% endif %}
+                        {% if w.competitor_count %}<span class="pstat comp">🎯 竞品 {{ w.competitor_count }}</span>{% endif %}
+                    </div>
+                    {% endif %}
                 </a>
             </li>
         {% endfor %}

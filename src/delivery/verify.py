@@ -124,25 +124,44 @@ def step_3_chat_send(token: Optional[str]) -> None:
         print(_fmt(FAIL, "Step 3 · 群消息发送", msg))
 
 
-# Required Bitable schema. Field name → category (text/number/...)
-# These match what feishu.py's push_to_bitable writes.
+# Required v2 Bitable schema. Field name → (label, feishu type int).
+# Must match what feishu.py's push_to_bitable writes (after migrate_v1_to_v2.py).
 REQUIRED_FIELDS = {
+    # Core identity
     "标题": ("text", 1),
     "链接": ("url", 15),
     "来源": ("text", 1),
-    "类别": ("single_select", 3),
-    "地域": ("single_select", 3),
+    "来源类别": ("single_select", 3),
+    "来源地域": ("single_select", 3),
+    "来源子类型": ("single_select", 3),
     "发布日期": ("datetime", 5),
     "收录日期": ("datetime", 5),
+    # Bilingual content
+    "中文标题": ("text", 1),
     "英文摘要": ("text", 1),
     "中文摘要": ("text", 1),
     "关键要点": ("text", 1),
-    "对中国的启示": ("text", 1),
+    # v2 pillars + competitor flag
+    "板块": ("multi_select", 4),
+    "是否竞品": ("single_select", 3),
+    # Three client-segment implications
+    "对跨国在华客户的启示": ("text", 1),
+    "对中国ESG/上市客户的启示": ("text", 1),
+    "对中国企业出海客户的启示": ("text", 1),
+    # Three client-segment relevance scores
+    "在华跨国相关度": ("number", 2),
+    "ESG上市相关度": ("number", 2),
+    "出海相关度": ("number", 2),
+    # Competitor intelligence
+    "竞品情报": ("text", 1),
+    # Tags & quality
     "话题": ("multi_select", 4),
     "行业": ("multi_select", 4),
     "证据类型": ("single_select", 3),
     "严谨度": ("number", 2),
-    "相关性": ("number", 2),
+    "综合相关性": ("number", 2),
+    # v2.1
+    "立场": ("single_select", 3),
 }
 
 
@@ -217,17 +236,26 @@ def step_5_bitable_insert(token: Optional[str]) -> None:
             "标题": "[VERIFY] 测试条目 · 可删除",
             "链接": {"link": "https://example.com", "text": "测试"},
             "来源": "verify-script",
-            "类别": "academic",
-            "地域": "global",
+            "来源类别": "academic",
+            "来源地域": "global",
+            "中文标题": "[V2 自检] 测试",
             "英文摘要": "Test row.",
             "中文摘要": "本条用于配置验证，可手动删除。",
             "关键要点": "• 第一点\n• 第二点",
-            "对中国的启示": "测试用",
+            "板块": ["global"],
+            "是否竞品": "否",
+            "对跨国在华客户的启示": "测试用",
+            "对中国ESG/上市客户的启示": "不直接相关",
+            "对中国企业出海客户的启示": "不直接相关",
+            "在华跨国相关度": 1,
+            "ESG上市相关度": 0,
+            "出海相关度": 0,
+            "竞品情报": "",
             "话题": ["性别平等"],
             "行业": ["通用"],
             "证据类型": "案例分析",
             "严谨度": 1,
-            "相关性": 1,
+            "综合相关性": 1,
             "发布日期": now_ms,
             "收录日期": now_ms,
         }
