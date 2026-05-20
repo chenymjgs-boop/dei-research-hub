@@ -157,11 +157,7 @@ class FeishuClient:
         spot which client segment to surface it to.
         """
         from ..processing.classifier import (
-            CLIENT_LABELS_ZH,
-            client_score,
-            group_by_pillar,
             rank_by_relevance,
-            split_competitors,
         )
 
         chat_id = SETTINGS.feishu_chat_id
@@ -187,15 +183,14 @@ class FeishuClient:
 
     def _build_daily_card(self, items: List[AnalyzedItem], date_label: str) -> dict:
         from ..processing.classifier import (
-            CLIENT_LABELS_ZH,
             client_score,
-            group_by_pillar,
-            split_competitors,
         )
 
-        # Group structures
-        by_pillar = group_by_pillar(items)
-        comp_items, _regular = split_competitors(items)
+        # Daily chat cards should show each item exactly once. Analyzer pillars
+        # are multi-select, so grouping directly by every pillar duplicates
+        # articles across sections. Competitors get their own section; regular
+        # items are assigned to one primary pillar for the digest.
+        by_section, comp_items = _group_daily_card_sections(items)
 
         # Header summary
         elements: list[dict] = [
@@ -206,9 +201,9 @@ class FeishuClient:
                     "content": (
                         f"**今日 DEI 情报 · {date_label}**\n"
                         f"共 **{len(items)}** 条精选 · "
-                        f"全球前沿 {len(by_pillar.get('global', []))} · "
-                        f"在华跨国 {len(by_pillar.get('mnc_china', []))} · "
-                        f"中国出海 {len(by_pillar.get('china_going_global', []))} · "
+                        f"全球前沿 {len(by_section.get('global', []))} · "
+                        f"在华跨国 {len(by_section.get('mnc_china', []))} · "
+                        f"中国出海 {len(by_section.get('china_going_global', []))} · "
                         f"竞品 {len(comp_items)}"
                     ),
                 },
@@ -224,7 +219,7 @@ class FeishuClient:
         ]
         for header_text, pkey in pillar_blocks:
             section = sorted(
-                by_pillar.get(pkey, []),
+                by_section.get(pkey, []),
                 key=lambda a: (client_score(a), a.rigor_score),
                 reverse=True,
             )[:3]  # top 3 per pillar
@@ -343,6 +338,67 @@ class FeishuClient:
 def _chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i : i + n]
+
+
+def _group_daily_card_sections(
+    items: List[AnalyzedItem],
+) -> tuple[dict[str, List[AnalyzedItem]], List[AnalyzedItem]]:
+    """Assign every item to exactly one daily-card section.
+
+    `pillars` is intentionally multi-select for storage and weekly synthesis,
+    but the chat digest is a short push notification. Rendering every selected
+    pillar makes the same article appear repeatedly. This grouping keeps the
+    digest deduplicated while preserving the full multi-pillar metadata in the
+    item line itself.
+    """
+    sections: dict[str, List[AnalyzedItem]] = {
+        "global": [],
+        "mnc_china": [],
+        "china_going_global": [],
+    }
+    competitors: List[AnalyzedItem] = []
+    for item in _dedupe_analyzed_items(items):
+        if item.raw.is_competitor:
+            competitors.append(item)
+            continue
+        sections.setdefault(_primary_daily_pillar(item), []).append(item)
+    return sections, competitors
+
+
+def _dedupe_analyzed_items(items: List[AnalyzedItem]) -> List[AnalyzedItem]:
+    """Preserve order while removing defensive duplicates by URL/hash/title."""
+    seen: set[str] = set()
+    out: List[AnalyzedItem] = []
+    for item in items:
+        key = item.raw.url or item.raw.hash or item.raw.title.strip().lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(item)
+    return out
+
+
+def _primary_daily_pillar(item: AnalyzedItem) -> str:
+    """Choose the single most useful daily-card pillar for a regular item."""
+    valid = {"global", "mnc_china", "china_going_global"}
+    pillars = [p for p in item.pillars if p in valid]
+    if not pillars:
+        return "global"
+    if len(pillars) == 1:
+        return pillars[0]
+
+    segment_scores = {
+        "mnc_china": item.relevance_mnc_china,
+        "china_going_global": item.relevance_going_global,
+    }
+    scored = [
+        (pillar, segment_scores[pillar])
+        for pillar in pillars
+        if pillar in segment_scores and segment_scores[pillar] > 0
+    ]
+    if scored:
+        return max(scored, key=lambda x: x[1])[0]
+    return "global"
 
 
 def _format_item_card_block(a: AnalyzedItem, with_competitor_intel: bool = False) -> dict:
