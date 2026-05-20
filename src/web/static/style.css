@@ -312,6 +312,96 @@ a:hover { color: var(--brand-900); }
     font-family: var(--font-en);
 }
 
+/* ---------- Latest feed (index) ---------- */
+.latest-section {
+    padding-bottom: 8px;
+}
+.latest-list {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--rule);
+}
+.latest-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 72px;
+    gap: 24px;
+    padding: 26px 0;
+    border-bottom: 1px solid var(--rule);
+}
+.latest-main h3 {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+}
+.latest-main h3 a {
+    color: var(--ink);
+}
+.latest-main h3 a:hover {
+    color: var(--brand-700);
+    text-decoration: none;
+}
+.latest-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-family: var(--font-en);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.latest-meta span:not(:last-child)::after {
+    content: "·";
+    margin-left: 8px;
+    color: var(--ink-subtle);
+}
+.latest-meta .latest-comp {
+    color: var(--comp);
+}
+.latest-original {
+    margin: 0 0 10px;
+    color: var(--ink-muted);
+    font-family: var(--font-en);
+    font-size: 13px;
+    line-height: 1.5;
+}
+.latest-summary {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 15px;
+    line-height: 1.75;
+}
+.latest-tags {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.latest-score {
+    align-self: start;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 8px;
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    color: var(--ink-muted);
+    font-size: 11px;
+    white-space: nowrap;
+}
+.latest-score .num {
+    color: var(--brand-700);
+    font-size: 24px;
+    line-height: 1;
+    font-weight: 700;
+}
+
 /* ---------- Week detail page ---------- */
 .week-hero {
     background: var(--paper-alt);
@@ -770,6 +860,8 @@ a:hover { color: var(--brand-900); }
     .narrative { padding: 40px 0 16px; font-size: 16px; }
     .narrative h2 { font-size: 24px; margin-top: 40px; }
     .week-card { padding: 28px 24px; }
+    .latest-item { grid-template-columns: 1fr; gap: 12px; }
+    .latest-score { flex-direction: row; justify-content: flex-start; width: fit-content; }
     .item-header { flex-direction: column; gap: 8px; }
     .client-rel-bar { gap: 4px; }
     .rel-cell { font-size: 11.5px; padding: 4px 8px; }

@@ -194,6 +194,17 @@ class Database:
             ).fetchall()
         return [_row_to_analyzed(r) for r in rows]
 
+    def fetch_latest(self, limit: int = 30) -> List[AnalyzedItem]:
+        """Return the latest analyzed items by collection time."""
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT * FROM items WHERE zh_summary IS NOT NULL "
+                "ORDER BY fetched_at DESC, overall_relevance DESC, rigor_score DESC "
+                "LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [_row_to_analyzed(r) for r in rows]
+
     # ---- weekly reports (cumulative archive for the web hub) ----
 
     def save_weekly_report(

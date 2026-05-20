@@ -37,6 +37,51 @@
     </div>
 </div>
 
+<section class="section latest-section">
+    <div class="container">
+        <div class="section-head">
+            <p class="section-eyebrow">Latest · 最新资讯</p>
+            <h2 class="section-title">近期收录</h2>
+        </div>
+
+        {% if latest_items %}
+        <div class="latest-list">
+        {% for item in latest_items %}
+            <article class="latest-item">
+                <div class="latest-main">
+                    <div class="latest-meta">
+                        <span>{{ item.published_at_label }}</span>
+                        <span>{{ item.source_name }}</span>
+                        {% if item.is_competitor %}<span class="latest-comp">竞品</span>{% endif %}
+                    </div>
+                    <h3><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a></h3>
+                    {% if item.title_original %}<p class="latest-original">{{ item.title_original }}</p>{% endif %}
+                    <p class="latest-summary">{{ item.zh_summary }}</p>
+                    <div class="latest-tags">
+                        {% for p in item.pillars %}
+                        <span class="badge pillar pillar-{{ p.key }}">{{ p.label }}</span>
+                        {% endfor %}
+                        {% for t in item.topics[:3] %}
+                        <span class="tag">{{ t }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="latest-score">
+                    <span class="num">{{ item.overall_relevance }}</span>
+                    <span>相关性</span>
+                </div>
+            </article>
+        {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>暂无近期资讯</h3>
+            <p>每日任务完成后会自动出现在这里。</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
 <section class="section">
     <div class="container">
         <div class="section-head">

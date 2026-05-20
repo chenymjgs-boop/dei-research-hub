@@ -51,6 +51,7 @@ def build_site(out_dir: Path | None = None) -> Path:
 
     db = Database(SETTINGS.db_path)
     weeks_raw = db.list_weekly_reports()
+    latest_items = db.fetch_latest(limit=36)
     stats = db.stats()
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
 
@@ -120,6 +121,7 @@ def build_site(out_dir: Path | None = None) -> Path:
     index_tpl = env.get_template("index.html")
     index_html = index_tpl.render(
         weeks=index_weeks,
+        latest_items=[_item_ctx(it) for it in latest_items],
         total_items=stats["total_items"],
         total_sources=stats["total_sources"],
         total_weeks=stats["total_weeks"],
