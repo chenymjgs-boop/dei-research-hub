@@ -145,8 +145,9 @@ python main.py weekly
 
 ### 4. 发布到 GitHub Pages 周报网站
 
-仓库已配置 GitHub Pages Actions 部署：`daily` 会在每日入库后重建
-`reports/site` 并发布，`weekly` 会在生成新周报后发布。
+仓库已配置 GitHub Pages Actions 部署：`Publish Research Hub` 会在推送
+`main` 后发布当前站点，`daily` 会在每日入库后重建 `reports/site` 并发布，
+`weekly` 会在生成新周报后发布。
 
 在 GitHub 仓库 **Settings → Pages** 中，将 **Build and deployment → Source**
 设置为 **GitHub Actions**。之后每次 workflow 成功结束，站点会更新到：
