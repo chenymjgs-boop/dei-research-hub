@@ -19,6 +19,27 @@ DATA_DIR.mkdir(exist_ok=True)
 REPORTS_DIR.mkdir(exist_ok=True)
 
 
+def _env_str(name: str, default: str = "") -> str:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return default
+    return value.strip()
+
+
+def _env_int(name: str, default: int) -> int:
+    value = _env_str(name)
+    if value == "":
+        return default
+    return int(value)
+
+
+def _env_float(name: str, default: float) -> float:
+    value = _env_str(name)
+    if value == "":
+        return default
+    return float(value)
+
+
 @dataclass(frozen=True)
 class Settings:
     # LLM provider
@@ -54,22 +75,22 @@ class Settings:
 
 def load_settings() -> Settings:
     return Settings(
-        llm_provider=os.getenv("LLM_PROVIDER", "openai").strip().lower(),
-        openai_api_key=os.getenv("OPENAI_API_KEY", ""),
-        openai_model=os.getenv("OPENAI_MODEL", "gpt-5.4-mini"),
-        llm_request_delay_seconds=float(os.getenv("LLM_REQUEST_DELAY_SECONDS", "25")),
-        anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
-        claude_model=os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6"),
-        feishu_app_id=os.getenv("FEISHU_APP_ID", ""),
-        feishu_app_secret=os.getenv("FEISHU_APP_SECRET", ""),
-        feishu_bitable_app_token=os.getenv("FEISHU_BITABLE_APP_TOKEN", ""),
-        feishu_bitable_table_id=os.getenv("FEISHU_BITABLE_TABLE_ID", ""),
-        feishu_chat_id=os.getenv("FEISHU_CHAT_ID", ""),
-        feishu_doc_folder_token=os.getenv("FEISHU_DOC_FOLDER_TOKEN", ""),
-        feishu_manual_intake_chat_id=os.getenv("FEISHU_MANUAL_INTAKE_CHAT_ID", ""),
-        max_items_per_run=int(os.getenv("MAX_ITEMS_PER_RUN", "40")),
-        max_items_per_source=int(os.getenv("MAX_ITEMS_PER_SOURCE", "8")),
-        lookback_days=int(os.getenv("LOOKBACK_DAYS", "7")),
+        llm_provider=_env_str("LLM_PROVIDER", "openai").lower(),
+        openai_api_key=_env_str("OPENAI_API_KEY"),
+        openai_model=_env_str("OPENAI_MODEL", "gpt-5.4-mini"),
+        llm_request_delay_seconds=_env_float("LLM_REQUEST_DELAY_SECONDS", 25),
+        anthropic_api_key=_env_str("ANTHROPIC_API_KEY"),
+        claude_model=_env_str("CLAUDE_MODEL", "claude-sonnet-4-6"),
+        feishu_app_id=_env_str("FEISHU_APP_ID"),
+        feishu_app_secret=_env_str("FEISHU_APP_SECRET"),
+        feishu_bitable_app_token=_env_str("FEISHU_BITABLE_APP_TOKEN"),
+        feishu_bitable_table_id=_env_str("FEISHU_BITABLE_TABLE_ID"),
+        feishu_chat_id=_env_str("FEISHU_CHAT_ID"),
+        feishu_doc_folder_token=_env_str("FEISHU_DOC_FOLDER_TOKEN"),
+        feishu_manual_intake_chat_id=_env_str("FEISHU_MANUAL_INTAKE_CHAT_ID"),
+        max_items_per_run=_env_int("MAX_ITEMS_PER_RUN", 40),
+        max_items_per_source=_env_int("MAX_ITEMS_PER_SOURCE", 8),
+        lookback_days=_env_int("LOOKBACK_DAYS", 7),
     )
 
 
